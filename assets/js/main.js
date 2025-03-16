@@ -226,4 +226,139 @@
   window.addEventListener('load', navmenuScrollspy);
   document.addEventListener('scroll', navmenuScrollspy);
 
+  /**
+   * Portfolio and Technology Filter Functionality
+   */
+  document.addEventListener('DOMContentLoaded', function() {
+    // Elements
+    const portfolioItems = document.querySelectorAll('.portfolio-item');
+    const multiselectDropdown = document.querySelector('.multiselect-dropdown');
+    const dropdownToggle = multiselectDropdown.querySelector('.dropdown-toggle');
+    const dropdownMenu = multiselectDropdown.querySelector('.dropdown-menu');
+    const selectedOptionsContainer = multiselectDropdown.querySelector('.selected-options');
+    const checkboxes = multiselectDropdown.querySelectorAll('input[type="checkbox"]');
+    
+    let selectedTechnologies = new Set();
+    let isotope = null;
+
+    // Initialize Isotope
+    imagesLoaded('.isotope-container', function() {
+      isotope = new Isotope('.isotope-container', {
+        itemSelector: '.portfolio-item',
+        layoutMode: 'fitRows'
+      });
+    });
+
+    // Toggle dropdown
+    dropdownToggle.addEventListener('click', () => {
+      multiselectDropdown.classList.toggle('active');
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!multiselectDropdown.contains(e.target)) {
+        multiselectDropdown.classList.remove('active');
+      }
+    });
+
+    // Update selected options display
+    function updateSelectedOptions() {
+      selectedOptionsContainer.innerHTML = '';
+      const count = selectedTechnologies.size;
+      
+      if (count === 0) {
+        dropdownToggle.querySelector('.dropdown-title').textContent = 'Seleccionar Tecnologías';
+        return;
+      }
+
+      dropdownToggle.querySelector('.dropdown-title').textContent = `${count} tecnologías seleccionadas`;
+      
+      selectedTechnologies.forEach(tech => {
+        const badge = document.createElement('span');
+        badge.className = 'selected-option';
+        badge.innerHTML = `${tech} <i class="bi bi-x-circle"></i>`;
+        
+        badge.querySelector('i').addEventListener('click', (e) => {
+          e.stopPropagation();
+          const checkbox = document.querySelector(`input[value="${tech}"]`);
+          if (checkbox) checkbox.checked = false;
+          selectedTechnologies.delete(tech);
+          updateSelectedOptions();
+          filterPortfolio();
+        });
+        
+        selectedOptionsContainer.appendChild(badge);
+      });
+    }
+
+    // Filter portfolio items
+    function filterPortfolio() {
+      if (!isotope) return;
+
+      if (selectedTechnologies.size === 0) {
+        isotope.arrange({ filter: '*' });
+        return;
+      }
+
+      isotope.arrange({
+        filter: function(itemElem) {
+          const techBadges = Array.from(itemElem.querySelectorAll('.tech-badge'))
+            .map(badge => badge.textContent.trim());
+          
+          return Array.from(selectedTechnologies)
+            .every(tech => techBadges.includes(tech));
+        }
+      });
+    }
+
+    // Handle checkbox changes
+    checkboxes.forEach(checkbox => {
+      checkbox.addEventListener('change', () => {
+        if (checkbox.checked) {
+          selectedTechnologies.add(checkbox.value);
+        } else {
+          selectedTechnologies.delete(checkbox.value);
+        }
+        updateSelectedOptions();
+        filterPortfolio();
+      });
+    });
+
+    // Handle category filters
+    document.querySelectorAll('.portfolio-filters li').forEach(filter => {
+      filter.addEventListener('click', function() {
+        const filterValue = this.getAttribute('data-filter');
+        
+        document.querySelector('.portfolio-filters .filter-active')
+          .classList.remove('filter-active');
+        this.classList.add('filter-active');
+
+        if (!isotope) return;
+
+        if (selectedTechnologies.size === 0) {
+          isotope.arrange({ filter: filterValue === '*' ? '*' : `.${filterValue}` });
+          return;
+        }
+
+        isotope.arrange({
+          filter: function(itemElem) {
+            const matchesCategory = filterValue === '*' || 
+              itemElem.classList.contains(filterValue.substring(1));
+            
+            if (!matchesCategory) return false;
+
+            const techBadges = Array.from(itemElem.querySelectorAll('.tech-badge'))
+              .map(badge => badge.textContent.trim());
+            
+            return Array.from(selectedTechnologies)
+              .every(tech => techBadges.includes(tech));
+          }
+        });
+      });
+    });
+
+    // Initialize
+    updateSelectedOptions();
+  });
+
 })();
